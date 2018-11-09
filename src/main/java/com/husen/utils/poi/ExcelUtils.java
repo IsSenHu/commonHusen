@@ -1,6 +1,7 @@
 package com.husen.utils.poi;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.time.StopWatch;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.util.CellRangeAddress;
@@ -17,12 +18,13 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -32,7 +34,7 @@ import java.util.zip.ZipOutputStream;
 public class ExcelUtils {
     private static final int MAX_ROWS = 1048576;
 
-    public static void export(List data, Class clazz, OutputStream outputStream, String excelName) throws IllegalAccessException {
+    public static void export(List data, Class clazz, OutputStream outputStream, String excelName) throws IllegalAccessException, IOException {
         int totals = data.size();
         int size = MAX_ROWS - 2;
         int totalPages = totals % size == 0 ? (totals / size) : (totals / size) + 1;
@@ -47,19 +49,28 @@ public class ExcelUtils {
             page++;
         }
         byte[] buffer = new byte[1024];
-        try (ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream)) {
-            for (InputStream inputStream : files) {
-                zipOutputStream.putNextEntry(new ZipEntry(UUID.randomUUID().toString() + ".xlsx"));
-                int len;
-                while ((len = inputStream.read(buffer)) != -1) {
-                    zipOutputStream.write(buffer, 0, len);
-                }
-                inputStream.close();
+        if(files.size() == 1) {
+            InputStream inputStream = files.get(0);
+            int len;
+            while ((len = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, len);
             }
-            zipOutputStream.finish();
-            zipOutputStream.closeEntry();
-        } catch (Exception e) {
-            e.printStackTrace();
+            inputStream.close();
+        }else {
+            try (ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream)) {
+                for (InputStream inputStream : files) {
+                    zipOutputStream.putNextEntry(new ZipEntry(UUID.randomUUID().toString() + ".xlsx"));
+                    int len;
+                    while ((len = inputStream.read(buffer)) != -1) {
+                        zipOutputStream.write(buffer, 0, len);
+                    }
+                    inputStream.close();
+                }
+                zipOutputStream.finish();
+                zipOutputStream.closeEntry();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -68,9 +79,8 @@ public class ExcelUtils {
         Field.setAccessible(fields, true);
         List<ExcelColumn> excelColumns = new ArrayList<>(fields.length);
         Arrays.stream(fields).forEach(field -> {
-            Annotation annotation = field.getDeclaredAnnotation(ExcelColumn.class);
-            if(null != annotation) {
-                ExcelColumn excelColumn = (ExcelColumn) annotation;
+            ExcelColumn excelColumn = getExcelColumn(field);
+            if(null != excelColumn) {
                 excelColumns.add(excelColumn);
             }
         });
@@ -107,13 +117,16 @@ public class ExcelUtils {
             SXSSFRow sxssfRow = sheet.createRow(n + 2);
             int i = 0;
             for (Field field : fields) {
-                i++;
+                ExcelColumn excelColumn = getExcelColumn(field);
+                if(null == excelColumn) {
+                    continue;
+                }
                 SXSSFCell sxssfCell;
                 Object value = field.get(object);
                 if(value instanceof String) {
                     sxssfCell = sxssfRow.createCell(i, CellType.STRING);
                     sxssfCell.setCellStyle(valueStyle);
-                    sxssfCell.setCellValue(object.toString());
+                    sxssfCell.setCellValue(value.toString());
                 }else if(value instanceof Date) {
                     sxssfCell = sxssfRow.createCell(i, CellType.STRING);
                     sxssfCell.setCellStyle(valueStyle);
@@ -157,16 +170,24 @@ public class ExcelUtils {
                     sxssfCell.setCellStyle(valueStyle);
                     sxssfCell.setCellValue(((BigDecimal)value).doubleValue());
                 }
+                i++;
             }
             n++;
         }
         try {
-            String fileName = excelName + LocalDateTime.now().toEpochSecond(ZoneOffset.UTC) + ".xlsx";
             OutputStream outputStream = new ByteArrayOutputStream();
             workbook.write(outputStream);
             return parseInputStream(outputStream);
         }catch (Exception e) {
             e.printStackTrace();
+        }
+        return null;
+    }
+
+    private static ExcelColumn getExcelColumn(Field field) {
+        Annotation annotation = field.getDeclaredAnnotation(ExcelColumn.class);
+        if(null != annotation) {
+            return (ExcelColumn) annotation;
         }
         return null;
     }
@@ -288,9 +309,30 @@ public class ExcelUtils {
         return cellStyle;
     }
 
-    //String转inputStream
     private static ByteArrayInputStream parseInputStream(OutputStream out) {
         ByteArrayOutputStream  byteArrayOutputStream = (ByteArrayOutputStream) out;
         return new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
+    }
+
+    public static void main(String[] args) throws IOException, IllegalAccessException {
+        StopWatch stopWatch = new StopWatch();
+        stopWatch.start();
+        List<ExcelTestVo> data = new ArrayList<>();
+        for(int i = 0; i < 100; i++) {
+            ExcelTestVo excelTestVo = new ExcelTestVo();
+            excelTestVo.setFieldOne("列一" + (i + 1));
+            excelTestVo.setFieldTwo(i + 1);
+            excelTestVo.setFieldThree(i + 1.01);
+            excelTestVo.setFieldFour(Date.from(Instant.now()));
+            excelTestVo.setFieldFive(LocalDateTime.now());
+            excelTestVo.setFieldSix(LocalDate.now());
+            data.add(excelTestVo);
+        }
+        if(data.size() + 2 > MAX_ROWS) {
+            export(data, ExcelTestVo.class, new FileOutputStream(new File("C:\\Users\\HS\\Desktop\\桌面壁纸\\Excel.zip")), "测试Excel导出");
+        }else {
+            export(data, ExcelTestVo.class, new FileOutputStream(new File("C:\\Users\\HS\\Desktop\\桌面壁纸\\Excel.xlsx")), "测试Excel导出");
+        }
+        System.out.println(stopWatch.getTime(TimeUnit.MILLISECONDS));
     }
 }

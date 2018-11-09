@@ -2,6 +2,7 @@
 //
 //import com.husen.vo.common.CommonMessageVo;
 //import org.apache.commons.collections4.CollectionUtils;
+//import org.apache.commons.lang3.time.StopWatch;
 //import org.apache.poi.ss.usermodel.*;
 //import org.apache.poi.ss.util.CellRangeAddress;
 //import org.apache.poi.xssf.streaming.SXSSFCell;
@@ -11,10 +12,15 @@
 //import org.apache.poi.xssf.usermodel.*;
 //import java.awt.Color;
 //import java.io.*;
+//import java.text.SimpleDateFormat;
+//import java.time.Instant;
+//import java.time.LocalDate;
 //import java.time.LocalDateTime;
 //import java.time.ZoneOffset;
+//import java.time.format.DateTimeFormatter;
 //import java.util.*;
 //import java.util.List;
+//import java.util.concurrent.TimeUnit;
 //import java.util.zip.ZipEntry;
 //import java.util.zip.ZipOutputStream;
 //
@@ -100,9 +106,25 @@
 //                        sxssfCell.setCellStyle(valueStyle);
 //                        sxssfCell.setCellValue(values.get(i).toString());
 //                    }else if(i == 1) {
-//                        sxssfCell = sxssfRow.createCell(i, CellType.STRING);
+//                        sxssfCell = sxssfRow.createCell(i, CellType.NUMERIC);
 //                        sxssfCell.setCellStyle(valueStyle);
 //                        sxssfCell.setCellValue(values.get(i).toString());
+//                    }else if(i == 2) {
+//                        sxssfCell = sxssfRow.createCell(i, CellType.NUMERIC);
+//                        sxssfCell.setCellStyle(valueStyle);
+//                        sxssfCell.setCellValue((Double) values.get(i));
+//                    }else if(i == 3) {
+//                        sxssfCell = sxssfRow.createCell(i, CellType.STRING);
+//                        sxssfCell.setCellStyle(valueStyle);
+//                        sxssfCell.setCellValue(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format((Date)values.get(i)));
+//                    }else if(i == 4) {
+//                        sxssfCell = sxssfRow.createCell(i, CellType.STRING);
+//                        sxssfCell.setCellStyle(valueStyle);
+//                        sxssfCell.setCellValue(((LocalDateTime)values.get(i)).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+//                    }else if(i == 5) {
+//                        sxssfCell = sxssfRow.createCell(i, CellType.STRING);
+//                        sxssfCell.setCellStyle(valueStyle);
+//                        sxssfCell.setCellValue(((LocalDate)values.get(i)).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
 //                    }
 //                }
 //                n++;
@@ -119,15 +141,21 @@
 //        return null;
 //    }
 //    public static void main(String[] args) {
-//        List<ExcelVo> excelVos = new ArrayList<>();
-//        for(int i = 0; i < 10000000; i++) {
-//            CommonMessageVo messageVo = new CommonMessageVo();
-//            messageVo.setId(1L);
-//            messageVo.setMessage("你好世界");
-//            excelVos.add(messageVo);
+//        StopWatch stopWatch = new StopWatch();
+//        stopWatch.start();
+//        List<ExcelVo> data = new ArrayList<>();
+//        for(int i = 0; i < 2000000; i++) {
+//            ExcelTestVo excelTestVo = new ExcelTestVo();
+//            excelTestVo.setFieldOne("列一" + (i + 1));
+//            excelTestVo.setFieldTwo(Integer.valueOf(i + 1));
+//            excelTestVo.setFieldThree(Double.valueOf(i + 1.01));
+//            excelTestVo.setFieldFour(Date.from(Instant.now()));
+//            excelTestVo.setFieldFive(LocalDateTime.now());
+//            excelTestVo.setFieldSix(LocalDate.now());
+//            data.add(excelTestVo);
 //        }
-//
-//        new PoiUtils().create(excelVos);
+//        new PoiUtils().create(data);
+//        System.out.println(stopWatch.getTime(TimeUnit.MILLISECONDS));
 //    }
 //
 //    private static CellStyle getColumnTopStyle(SXSSFWorkbook workbook) {

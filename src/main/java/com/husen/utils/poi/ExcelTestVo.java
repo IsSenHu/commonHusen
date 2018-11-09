@@ -1,16 +1,16 @@
 package com.husen.utils.poi;
 
 import java.io.Serializable;
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Field;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 /**
  * Created by HuSen on 2018/11/9 9:53.
  */
-public class ExcelTestVo implements Serializable {
+public class ExcelTestVo implements Serializable, ExcelVo {
     private static final long serialVersionUID = -4544002190825510002L;
     @ExcelColumn(value = "第一列")
     private String fieldOne;
@@ -78,15 +78,27 @@ public class ExcelTestVo implements Serializable {
         this.fieldSix = fieldSix;
     }
 
-    public static void main(String[] args) {
-        Field[] fields = ExcelTestVo.class.getDeclaredFields();
-        Field.setAccessible(fields, true);
-        for(Field field : fields) {
-            Annotation annotation = field.getDeclaredAnnotation(ExcelColumn.class);
-            if(annotation != null) {
-                ExcelColumn excelColumn = (ExcelColumn) annotation;
-                System.out.println(excelColumn.value() + "=>" + excelColumn.format());
-            }
-        }
+    @Override
+    public List<String> colNames() {
+        List<String> list = new ArrayList<>(6);
+        list.add("第一列");
+        list.add("第二列");
+        list.add("第三列");
+        list.add("第四列");
+        list.add("第五列");
+        list.add("第六列");
+        return list;
+    }
+
+    @Override
+    public List<Object> cellValues() {
+        List<Object> list = new ArrayList<>();
+        list.add(fieldOne);
+        list.add(fieldTwo);
+        list.add(fieldThree);
+        list.add(fieldFour);
+        list.add(fieldFive);
+        list.add(fieldSix);
+        return list;
     }
 }
